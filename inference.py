@@ -415,7 +415,12 @@ def main(args):
     source_name = os.path.basename(source).split(".")[0]
     target_name = os.path.basename(target_name).split(".")[0]
     os.makedirs(args.output, exist_ok=True)
-    torchaudio.save(os.path.join(args.output, f"vc_{source_name}_{target_name}_{length_adjust}_{diffusion_steps}_{inference_cfg_rate}.wav"), vc_wave.cpu(), sr)
+    out_file = os.path.join(args.output, f"vc_{source_name}_{target_name}_{length_adjust}_{diffusion_steps}_{inference_cfg_rate}.wav")
+    try:
+        import soundfile as sf
+        sf.write(out_file, np.concatenate(generated_wave_chunks), sr)
+    except Exception:
+        torchaudio.save(out_file, vc_wave.cpu(), sr)
 
 
 if __name__ == "__main__":
