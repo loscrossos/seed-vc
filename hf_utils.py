@@ -97,6 +97,16 @@ def resolve_model_path(repo_id: str, filename: str, base_dir: Optional[str] = No
         os.path.join(base_dir, reponame, filename),
         os.path.join(base_dir, clean_repo_id, filename),
         os.path.join(base_dir, filename),
+        # Cross-search adjacent directories (e.g. external_libs/checkpoints vs external_libs/seed-vc/checkpoints)
+        os.path.join(base_dir, "..", "checkpoints", reponame, filename),
+        os.path.join(base_dir, "..", "checkpoints", clean_repo_id, filename),
+        os.path.join(base_dir, "..", "checkpoints", filename),
+        os.path.join(base_dir, "seed-vc", "checkpoints", reponame, filename),
+        os.path.join(base_dir, "seed-vc", "checkpoints", clean_repo_id, filename),
+        os.path.join(base_dir, "..", "seed-vc", "checkpoints", reponame, filename),
+        os.path.join(base_dir, "..", "seed-vc", "checkpoints", clean_repo_id, filename),
+        os.path.join(base_dir, "..", "..", "checkpoints", reponame, filename),
+        os.path.join(base_dir, "..", "..", "checkpoints", clean_repo_id, filename),
     ]
 
     # Config files may already be in configs/ or configs/presets/
@@ -109,6 +119,21 @@ def resolve_model_path(repo_id: str, filename: str, base_dir: Optional[str] = No
     for candidate in candidates:
         if os.path.isfile(candidate):
             return os.path.abspath(candidate)
+
+    # Check Hugging Face cache snapshots format (e.g. models--org--repo/snapshots/<hash>/filename)
+    hf_subdirs = [
+        os.path.join(base_dir, f"models--{clean_repo_id.replace('/', '--')}"),
+        os.path.join(base_dir, "hf_cache", f"models--{clean_repo_id.replace('/', '--')}"),
+        os.path.join(base_dir, "..", "checkpoints", "hf_cache", f"models--{clean_repo_id.replace('/', '--')}"),
+    ]
+    for hf_sub in hf_subdirs:
+        snaps = os.path.join(hf_sub, "snapshots")
+        if os.path.isdir(snaps):
+            for snap in sorted(os.listdir(snaps), reverse=True):
+                candidate = os.path.join(snaps, snap, filename)
+                if os.path.isfile(candidate):
+                    return os.path.abspath(candidate)
+
     return None
 
 
@@ -129,10 +154,33 @@ def resolve_pretrained_path(model_id_or_repo: str, base_dir: Optional[str] = Non
     candidates = [
         os.path.join(base_dir, reponame),
         os.path.join(base_dir, clean_repo_id),
+        # Cross-search adjacent directories (e.g. external_libs/checkpoints vs external_libs/seed-vc/checkpoints)
+        os.path.join(base_dir, "..", "checkpoints", reponame),
+        os.path.join(base_dir, "..", "checkpoints", clean_repo_id),
+        os.path.join(base_dir, "seed-vc", "checkpoints", reponame),
+        os.path.join(base_dir, "seed-vc", "checkpoints", clean_repo_id),
+        os.path.join(base_dir, "..", "seed-vc", "checkpoints", reponame),
+        os.path.join(base_dir, "..", "seed-vc", "checkpoints", clean_repo_id),
+        os.path.join(base_dir, "..", "..", "checkpoints", reponame),
+        os.path.join(base_dir, "..", "..", "checkpoints", clean_repo_id),
     ]
     for candidate in candidates:
         if os.path.isdir(candidate):
             return os.path.abspath(candidate)
+
+    # Check Hugging Face cache snapshots format (e.g. models--org--repo/snapshots/<hash>)
+    hf_subdirs = [
+        os.path.join(base_dir, f"models--{clean_repo_id.replace('/', '--')}"),
+        os.path.join(base_dir, "hf_cache", f"models--{clean_repo_id.replace('/', '--')}"),
+        os.path.join(base_dir, "..", "checkpoints", "hf_cache", f"models--{clean_repo_id.replace('/', '--')}"),
+    ]
+    for hf_sub in hf_subdirs:
+        snaps = os.path.join(hf_sub, "snapshots")
+        if os.path.isdir(snaps):
+            for snap in sorted(os.listdir(snaps), reverse=True):
+                snap_dir = os.path.join(snaps, snap)
+                if os.path.isdir(snap_dir):
+                    return os.path.abspath(snap_dir)
 
     return model_id_or_repo
 

@@ -415,13 +415,13 @@ class BigVGAN(
             cls,
             *,
             model_id: str,
-            revision: str,
-            cache_dir: str,
-            force_download: bool,
-            proxies: Optional[Dict],
-            resume_download: bool,
-            local_files_only: bool,
-            token: Union[str, bool, None],
+            revision: Optional[str] = None,
+            cache_dir: Optional[str] = None,
+            force_download: bool = False,
+            proxies: Optional[Dict] = None,
+            resume_download: bool = False,
+            local_files_only: bool = False,
+            token: Union[str, bool, None] = None,
             map_location: str = "cpu",  # Additional argument
             strict: bool = False,  # Additional argument
             use_cuda_kernel: bool = False,
@@ -438,19 +438,28 @@ class BigVGAN(
             except ImportError:
                 pass
 
+        # Helper to call hf_hub_download handling potential changes in newer huggingface_hub
+        def safe_hf_hub_download(**kwargs):
+            if proxies is not None:
+                kwargs["proxies"] = proxies
+            if resume_download:
+                try:
+                    return hf_hub_download(**kwargs, resume_download=True)
+                except TypeError:
+                    pass
+            return hf_hub_download(**kwargs)
+
         # Download and load hyperparameters (h) used by BigVGAN
         if os.path.isdir(model_id):
             print("Loading config.json from local directory")
             config_file = os.path.join(model_id, "config.json")
         else:
-            config_file = hf_hub_download(
+            config_file = safe_hf_hub_download(
                 repo_id=model_id,
                 filename="config.json",
                 revision=revision,
                 cache_dir=cache_dir,
                 force_download=force_download,
-                proxies=proxies,
-                resume_download=resume_download,
                 token=token,
                 local_files_only=local_files_only,
             )
@@ -475,14 +484,12 @@ class BigVGAN(
             model_file = os.path.join(model_id, "bigvgan_generator.pt")
         else:
             print(f"Loading weights from {model_id}")
-            model_file = hf_hub_download(
+            model_file = safe_hf_hub_download(
                 repo_id=model_id,
                 filename="bigvgan_generator.pt",
                 revision=revision,
                 cache_dir=cache_dir,
                 force_download=force_download,
-                proxies=proxies,
-                resume_download=resume_download,
                 token=token,
                 local_files_only=local_files_only,
             )
